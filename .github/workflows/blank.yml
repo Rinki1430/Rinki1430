@@ -1,0 +1,66 @@
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+import random
+
+TOKEN = '7563413785:AAEWhnTWm_yqWDxO_u2tCjjPqXTOZUuEvgs'
+
+# Sample hamster data
+hamsters = {
+    '1': {'name': 'Fuzzy', 'strength': 5, 'health': 20},
+    '2': {'name': 'Squeaky', 'strength': 7, 'health': 15},
+    '3': {'name': 'Nibbles', 'strength': 6, 'health': 18},
+}
+
+user_hamsters = {}
+
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text('Welcome to Hamster Kombat! Use /select to choose your hamster.')
+
+def select_hamster(update: Update, context: CallbackContext):
+    keyboard = [[f'/{h_id} {hamster["name"]}' for h_id, hamster in hamsters.items()]]
+    update.message.reply_text('Choose your hamster:', reply_markup=keyboard)
+
+def hamster_choice(update: Update, context: CallbackContext):
+    hamster_id = update.message.text.split()[0][1:]
+    user_id = update.message.from_user.id
+
+    if hamster_id in hamsters:
+        user_hamsters[user_id] = hamsters[hamster_id]
+        update.message.reply_text(f'You have selected {hamsters[hamster_id]["name"]}!')
+    else:
+        update.message.reply_text('Invalid hamster selection!')
+
+def battle(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+    if user_id not in user_hamsters:
+        update.message.reply_text('You need to select a hamster first! Use /select.')
+        return
+
+    opponent_health = random.randint(10, 20)
+    user_health = user_hamsters[user_id]['health']
+    user_strength = user_hamsters[user_id]['strength']
+
+    while user_health > 0 and opponent_health > 0:
+        opponent_health -= user_strength
+        user_health -= random.randint(1, 5)  # Opponent attacks back
+
+    if user_health > 0:
+        update.message.reply_text(f'You won the battle! Your hamster survived with {user_health} health left.')
+    else:
+        update.message.reply_text('You lost the battle! Your hamster has fainted.')
+
+def main():
+    updater = Updater(TOKEN, use_context=True)
+    
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler('start', start))
+    dp.add_handler(CommandHandler('select', select_hamster))
+    dp.add_handler(CommandHandler('battle', battle))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, hamster_choice))
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
+    
